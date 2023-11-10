@@ -1,6 +1,7 @@
 use std::sync::Mutex;
 
-use crate::bindings::*;
+mod bindings;
+use bindings::*;
 
 use crate::ServiceInfo;
 
@@ -27,7 +28,7 @@ impl OwnedDnsService {
         // SAFETY: Must be called with a valid DNSServiceRef; checked for in line above
         unsafe { DNSServiceProcessResult(self.0) }
     }
-    fn internal_socket(&self) -> dnssd_sock_t {
+    fn internal_socket(&self) -> std::ffi::c_int {
         assert!(self.is_valid());
 
         // SAFETY: Must be called with a valid DNSServiceRef; checked for in line above
@@ -41,11 +42,11 @@ impl OwnedDnsService {
     }
 }
 struct InternalSocket<'a> {
-    fd: dnssd_sock_t,
+    fd: std::ffi::c_int,
     _lifetime: &'a (),
 }
 impl InternalSocket<'_> {
-    fn get(&self) -> dnssd_sock_t { self.fd }
+    fn get(&self) -> std::ffi::c_int { self.fd }
 }
 fn get_internal_socket<'a>(dns_service: &'a Mutex<OwnedDnsService>) -> InternalSocket<'a> {
     let guard = dns_service.lock().unwrap();
@@ -70,12 +71,12 @@ impl Drop for OwnedDnsService {
 
 #[cfg(not(windows))]
 pub(super) mod posix {
-    use super::*;
     use std::sync::Mutex;
+    
     pub(super) fn create_pipe() -> (std::ffi::c_int, std::ffi::c_int) {
         let mut pipes = [0 as std::ffi::c_int; 2];
         // SAFETY: `pipes` contains exactly two c_int's
-        let error = unsafe { pipe(&mut pipes as *mut std::ffi::c_int) };
+        let error = unsafe { libc::pipe(&mut pipes as *mut std::ffi::c_int) };
         assert!(error == 0);
     
         (pipes[0], pipes[1])

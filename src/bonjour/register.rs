@@ -3,7 +3,7 @@ use std::{ptr::{null, null_mut}, ffi::CStr, future::Future, task::{Poll, Waker},
 use crate::{util::{Protocol, registration_type, find_available_port}, RegisterError, Registration, ServiceInfo};
 use super::{OwnedDnsService, get_internal_socket, block_until_handled};
 
-use crate::bindings::*;
+use super::bindings::*;
 
 pub(crate) struct BonjourRegistration {
     _dns_service: Arc<Mutex<OwnedDnsService>>,

@@ -4,7 +4,7 @@ use crate::{Browser, BrowseError, BrowseCallback, ServiceState, ServiceInfo};
 use crate::util::{Protocol, registration_type};
 use super::{OwnedDnsService, BonjourFoundService, BonjourLostService, get_internal_socket, block_until_handled};
 
-use crate::bindings::*;
+use super::bindings::*;
 
 pub(crate) struct BonjourBrowser {
     _dns_service: Arc<Mutex<OwnedDnsService>>,

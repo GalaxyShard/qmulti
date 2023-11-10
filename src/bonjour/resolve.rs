@@ -3,7 +3,7 @@ use std::{future::Future, ffi::{CStr, CString}, ptr::null_mut, sync::{Mutex, Arc
 use crate::{ServiceInfo, FoundService, ResolvedService, LostService, ResolveError};
 use async_trait::async_trait;
 
-use crate::bindings::*;
+use super::bindings::*;
 
 use super::{BonjourLostService, BonjourFoundService, OwnedDnsService, get_internal_socket, block_until_handled};
 
@@ -328,7 +328,7 @@ unsafe extern "C" fn get_addr_info_callback(
     _interface_index: u32,
     error: DNSServiceErrorType,
     _hostname: *const ::std::os::raw::c_char,
-    address: *const sockaddr,
+    address: *const libc::sockaddr,
     _ttl: u32,
     context: *mut ::std::os::raw::c_void,
 ) {
@@ -341,13 +341,13 @@ unsafe extern "C" fn get_addr_info_callback(
         // SAFETY: precondition
         let address = unsafe { &*(address as *const libc::sockaddr) };
 
-        if address.sa_family == libc::AF_INET as u8 {
+        if address.sa_family == (libc::AF_INET as u8).into() {
             // SAFETY: sockaddr is sockaddr_in if sa_family == AF_INET
             let octets = unsafe { &*(address as *const _ as *const libc::sockaddr_in) }.sin_addr.s_addr;
 
             state.ip = Some(Ipv4Addr::from(octets.to_ne_bytes()).into());
             
-        } else if address.sa_family == libc::AF_INET6 as u8 {
+        } else if address.sa_family == (libc::AF_INET6 as u8).into() {
             // SAFETY: sockaddr is sockaddr_in6 if sa_family == AF_INET6
             let octets = unsafe { &*(address as *const _ as *const libc::sockaddr_in6) }.sin6_addr.s6_addr;
 
