@@ -37,25 +37,27 @@ pub enum ResolveError {
     Offline, Unknown,
 }
 
-#[cfg(bonjour)]
+#[cfg(zeroconf_impl = "bonjour")]
 mod bonjour;
 
-#[cfg(avahi)]
+#[cfg(zeroconf_impl = "avahi")]
 mod avahi;
 
-#[cfg(android_nsd)]
+#[cfg(zeroconf_impl = "android_nsd")]
 mod android_nsd;
 
-#[cfg(not(any(bonjour, avahi, android_nsd)))]
-compile_error!("QMulti only supports Bonjour, Avahi, and Android NSD (includes Linux, Android, iOS, MacOS, and Windows)");
+#[cfg(not(any(zeroconf_impl = "bonjour", zeroconf_impl = "avahi", zeroconf_impl = "android_nsd", zeroconf_impl = "windns")))]
+compile_error!("QMulti only supports Bonjour, Avahi, Android NSD, and windns (includes Linux, Android, iOS, MacOS, and Windows)");
 
 pub async fn publish_service(service_type: &str, protocol: Protocol, port: u16) -> Result<impl Registration, RegisterError> {
-    #[cfg(bonjour)]
+    #[cfg(zeroconf_impl = "bonjour")]
     return bonjour::register::RegisterFuture::new(service_type, protocol, port)?.await;
-    #[cfg(avahi)]
+    #[cfg(zeroconf_impl = "avahi")]
     return avahi::register::RegisterFuture::new(service_type, protocol, port)?.await;
-    #[cfg(android_nsd)]
+    #[cfg(zeroconf_impl = "android_nsd")]
     return compile_error!("TODO: implement Android NSD");
+    #[cfg(zeroconf_impl = "windns")]
+    return compile_error!("TODO: implement windns");
 }
 #[derive(Debug)]
 pub struct ResolvedService {
@@ -82,10 +84,12 @@ pub trait Browser {
 }
 pub type BrowseCallback = Box<dyn FnMut(ServiceState) + Send + 'static>;
 pub fn browse_services(service_type: &str, protocol: Protocol, callback: impl FnMut(ServiceState) -> () + Send + 'static) -> Result<impl Browser, BrowseError> {
-    #[cfg(bonjour)]
+    #[cfg(zeroconf_impl = "bonjour")]
     return bonjour::browse::browse_services(service_type, protocol, Box::new(callback));
-    #[cfg(avahi)]
+    #[cfg(zeroconf_impl = "avahi")]
     return compile_error!("TODO: implement Avahi");
-    #[cfg(android_nsd)]
+    #[cfg(zeroconf_impl = "android_nsd")]
     return compile_error!("TODO: implement Android NSD");
+    #[cfg(zeroconf_impl = "windns")]
+    return compile_error!("TODO: implement windns");
 }

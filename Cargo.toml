@@ -11,7 +11,7 @@ members = ["qmulti-test"]
 [dependencies]
 async-trait = "0.1.74"
 
-[target.'cfg(bonjour)'.dependencies]
+#[target.'cfg(any(zeroconf_impl = "bonjour", target_vendor = "apple", windows))'.dependencies]
 libc = "0.2"
 
 [build-dependencies]
