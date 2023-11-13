@@ -128,11 +128,11 @@ pub const kDNSServiceType_MAILB: c_uint = 253;
 pub const kDNSServiceType_MAILA: c_uint = 254;
 pub const kDNSServiceType_ANY: c_uint = 255;
 
-pub const kDNSServiceErr_NoError: c_int = 0;
+pub const kDNSServiceErr_NoError: c_int = 0; // No error
 pub const kDNSServiceErr_Unknown: c_int = -65537;
 pub const kDNSServiceErr_NoSuchName: c_int = -65538;
-pub const kDNSServiceErr_NoMemory: c_int = -65539;
-pub const kDNSServiceErr_BadParam: c_int = -65540;
+pub const kDNSServiceErr_NoMemory: c_int = -65539; // Out of memory
+pub const kDNSServiceErr_BadParam: c_int = -65540; // Bad parameter value passed to function
 pub const kDNSServiceErr_BadReference: c_int = -65541;
 pub const kDNSServiceErr_BadState: c_int = -65542;
 pub const kDNSServiceErr_BadFlags: c_int = -65543;
@@ -140,27 +140,27 @@ pub const kDNSServiceErr_Unsupported: c_int = -65544;
 pub const kDNSServiceErr_NotInitialized: c_int = -65545;
 pub const kDNSServiceErr_AlreadyRegistered: c_int = -65547;
 pub const kDNSServiceErr_NameConflict: c_int = -65548;
-pub const kDNSServiceErr_Invalid: c_int = -65549;
+pub const kDNSServiceErr_Invalid: c_int = -65549; // An invalid index or character was passed
 pub const kDNSServiceErr_Firewall: c_int = -65550;
-pub const kDNSServiceErr_Incompatible: c_int = -65551;
+pub const kDNSServiceErr_Incompatible: c_int = -65551; // Client library incompatible with daemon
 pub const kDNSServiceErr_BadInterfaceIndex: c_int = -65552;
 pub const kDNSServiceErr_Refused: c_int = -65553;
 pub const kDNSServiceErr_NoSuchRecord: c_int = -65554;
 pub const kDNSServiceErr_NoAuth: c_int = -65555;
-pub const kDNSServiceErr_NoSuchKey: c_int = -65556;
+pub const kDNSServiceErr_NoSuchKey: c_int = -65556; // The key does not exist in the TXT record
 pub const kDNSServiceErr_NATTraversal: c_int = -65557;
-pub const kDNSServiceErr_DoubleNAT: c_int = -65558;
+pub const kDNSServiceErr_DoubleNAT: c_int = -65558; // More than one NAT gateway between source and destination
 pub const kDNSServiceErr_BadTime: c_int = -65559;
 pub const kDNSServiceErr_BadSig: c_int = -65560;
 pub const kDNSServiceErr_BadKey: c_int = -65561;
 pub const kDNSServiceErr_Transient: c_int = -65562;
-pub const kDNSServiceErr_ServiceNotRunning: c_int = -65563;
-pub const kDNSServiceErr_NATPortMappingUnsupported: c_int = -65564;
-pub const kDNSServiceErr_NATPortMappingDisabled: c_int = -65565;
-pub const kDNSServiceErr_NoRouter: c_int = -65566;
+pub const kDNSServiceErr_ServiceNotRunning: c_int = -65563; // Background daemon not running
+pub const kDNSServiceErr_NATPortMappingUnsupported: c_int = -65564; // NAT doesn't support PCP, NAT-PMP or UPnP
+pub const kDNSServiceErr_NATPortMappingDisabled: c_int = -65565; // NAT supports PCP, NAT-PMP or UPnP, but it's disabled by the administrator
+pub const kDNSServiceErr_NoRouter: c_int = -65566; // No router currently configured (probably no network connectivity)
 pub const kDNSServiceErr_PollingMode: c_int = -65567;
-pub const kDNSServiceErr_Timeout: c_int = -65568;
-pub const kDNSServiceErr_DefunctConnection: c_int = -65569;
+pub const kDNSServiceErr_Timeout: c_int = -65568; // A timeout occurred because the kDNSServiceFlagsTimeout + flag was passed
+pub const kDNSServiceErr_DefunctConnection: c_int = -65569; // Connection to daemon returned a SO_ISDEFUNCT error result
 pub const kDNSServiceErr_PolicyDenied: c_int = -65570;
 pub const kDNSServiceErr_NotPermitted: c_int = -65571;
 
@@ -211,9 +211,9 @@ pub type DNSServiceGetAddrInfoReply = Option<unsafe extern "C" fn (
 )>;
 
 #[cfg(windows)]
-type dnssd_sock_t = libc::SOCKET;
+pub type dnssd_sock_t = libc::SOCKET;
 #[cfg(not(windows))]
-type dnssd_sock_t = std::ffi::c_int;
+pub type dnssd_sock_t = std::ffi::c_int;
 
 extern "C" {
     // Not available with avahi-compat-libdns_sd

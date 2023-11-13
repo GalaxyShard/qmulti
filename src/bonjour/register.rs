@@ -15,13 +15,10 @@ impl Registration for BonjourRegistration {
 
 struct FutureState {
     waker: Option<Waker>,
-    completed: bool,
-    service_info: Option<ServiceInfo>,
+    output: Option<Result<ServiceInfo, RegisterError>>,
 }
 struct CallbackState {
-    service_info: Option<ServiceInfo>,
-    error: DNSServiceErrorType,
-    completed: bool,
+    output: Option<Result<ServiceInfo, RegisterError>>,
     _marker: PhantomPinned,
 }
 
@@ -31,6 +28,16 @@ pub(crate) struct RegisterFuture {
     #[cfg(not(windows))]
     pipe_writer: Arc<Mutex<std::ffi::c_int>>,
 }
+
+fn map_error(err: DNSServiceErrorType) -> RegisterError {
+    #[allow(non_upper_case_globals)] // bug: https://github.com/rust-lang/rust/issues/39371
+    match err {
+        kDNSServiceErr_ServiceNotRunning => RegisterError::Offline,
+        kDNSServiceErr_NoRouter => RegisterError::Offline,
+        _ => RegisterError::Unknown
+    }
+}
+
 impl RegisterFuture {
     pub(crate) fn new(service_type: &str, protocol: Protocol, port: u16) -> Result<Self, RegisterError> {
         #[cfg(not(windows))]
@@ -39,9 +46,8 @@ impl RegisterFuture {
         let writer = Arc::new(Mutex::new(writer));
 
         let future_state = Arc::new(Mutex::new(FutureState {
-            completed: false,
             waker: None,
-            service_info: None,
+            output: None,
         }));
         
         let flags = 0; // note: see kDNSServiceFlagsNoAutoRename
@@ -51,9 +57,7 @@ impl RegisterFuture {
         let callback_ptr: DNSServiceRegisterReply = Some(handle_registered);
 
         let callback_state = Box::pin(Mutex::new(CallbackState {
-            service_info: None,
-            error: kDNSServiceErr_NoError,
-            completed: false,
+            output: None,
             _marker: PhantomPinned,
         }));
         let context = &*callback_state as *const Mutex<CallbackState> as *mut std::ffi::c_void;
@@ -135,7 +139,7 @@ impl OwnedDnsService {
         if error == 0 {
             Ok(OwnedDnsService(internal_dns_ref))
         } else {
-            Err(RegisterError::Unknown)
+            Err(map_error(error))
         }
     }
 }
@@ -156,6 +160,7 @@ fn register_thread(
     // SAFETY: dns_service lives until this thread exits; reader/writer are not closed
     #[cfg(not(windows))]
     if let Err(()) = unsafe { super::posix::wait_for_status(socket.get(), pipe.0) } {
+        // future dropped; safely exit
         super::posix::close_signal_pipe(pipe.0, &pipe.1);
         return;
     } else {
@@ -178,22 +183,28 @@ fn register_thread(
 
     let error = block_until_handled(&dns_service);
     if error != 0 {
-        panic!("Unexpected error from DNSServiceProcessResult (code {})", error);
+        let mut future_state_guard = future_state.lock().unwrap();
+        future_state_guard.output = Some(Err(map_error(error)));
+        
+        if let Some(waker) = future_state_guard.waker.take() {
+            drop(future_state_guard);
+            waker.wake();
+        }
+        return;
     }
-    
-    let mut callback_state_guard = callback_state.lock().unwrap();
-    assert!(callback_state_guard.completed);
-    if callback_state_guard.error != 0 {
-        panic!("Unexpected error from callback (code {})", callback_state_guard.error);
-    }
-    
-    let mut future_state_guard = future_state.lock().unwrap();
-    future_state_guard.completed = true;
-    future_state_guard.service_info = callback_state_guard.service_info.take();
 
-    if let Some(waker) = future_state_guard.waker.take() {
-        drop(future_state_guard);
-        waker.wake();
+    let mut callback_state_guard = callback_state.lock().unwrap();
+    if let Some(output) = callback_state_guard.output.take() {
+        let mut future_state_guard = future_state.lock().unwrap();
+        
+        future_state_guard.output = Some(output);
+
+        if let Some(waker) = future_state_guard.waker.take() {
+            drop(future_state_guard);
+            waker.wake();
+        }
+    } else {
+        unreachable!();
     }
 }
 
@@ -203,11 +214,18 @@ impl Future for RegisterFuture {
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         let mut state = self.state.lock().unwrap();
 
-        if state.completed {
-            Poll::Ready(Ok(BonjourRegistration {
-                _dns_service: self.dns_service.clone(),
-                service_info: state.service_info.take().unwrap(),
-            }))
+        if let Some(output) = state.output.take() {
+            match output {
+                Ok(info) => {
+                    Poll::Ready(Ok(BonjourRegistration {
+                        _dns_service: self.dns_service.clone(),
+                        service_info: info,
+                    }))
+                }
+                Err(err) => {
+                    Poll::Ready(Err(err))
+                }
+            }
         } else {
             state.waker = Some(cx.waker().clone());
             Poll::Pending
@@ -234,7 +252,6 @@ unsafe extern "C" fn handle_registered(
     // SAFETY: precondition
     let context = unsafe { &*(context as *const Mutex<CallbackState>) };
     let mut state = context.lock().unwrap();
-    state.completed = true;
 
     if error == 0 {
         assert!(!name.is_null());
@@ -242,14 +259,14 @@ unsafe extern "C" fn handle_registered(
         assert!(!domain.is_null());
         
         // SAFETY: error == 0; precondition
-        state.service_info = Some(ServiceInfo {
+        state.output = Some(Ok(ServiceInfo {
             name: unsafe { CStr::from_ptr(name) }.to_owned(),
             domain: unsafe { CStr::from_ptr(domain) }.to_owned(),
             reg_type: unsafe { CStr::from_ptr(reg_type) }.to_owned(),
             interface_index: 0,
-        });
+        }));
     } else {
-        state.error = error;
+        state.output = Some(Err(map_error(error)));
     }
 }
 

@@ -28,11 +28,12 @@ impl OwnedDnsService {
         // SAFETY: Must be called with a valid DNSServiceRef; checked for in line above
         unsafe { DNSServiceProcessResult(self.0) }
     }
-    fn internal_socket(&self) -> std::ffi::c_int {
+    fn internal_socket(&self) -> dnssd_sock_t {
         assert!(self.is_valid());
 
         // SAFETY: Must be called with a valid DNSServiceRef; checked for in line above
         let socket = unsafe { DNSServiceRefSockFD(self.0) };
+        #[cfg(not(windows))]
         assert!(socket != -1);
 
         socket
@@ -42,11 +43,11 @@ impl OwnedDnsService {
     }
 }
 struct InternalSocket<'a> {
-    fd: std::ffi::c_int,
+    fd: dnssd_sock_t,
     _lifetime: &'a (),
 }
 impl InternalSocket<'_> {
-    fn get(&self) -> std::ffi::c_int { self.fd }
+    fn get(&self) -> dnssd_sock_t { self.fd }
 }
 fn get_internal_socket<'a>(dns_service: &'a Mutex<OwnedDnsService>) -> InternalSocket<'a> {
     let guard = dns_service.lock().unwrap();
