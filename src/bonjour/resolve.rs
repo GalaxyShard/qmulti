@@ -32,6 +32,16 @@ pub(crate) struct ResolveFuture {
     #[cfg(not(windows))]
     pipe_writer: Arc<Mutex<std::ffi::c_int>>,
 }
+
+fn map_error(err: DNSServiceErrorType) -> ResolveError {
+    #[allow(non_upper_case_globals)] // bug: https://github.com/rust-lang/rust/issues/39371
+    match err {
+        kDNSServiceErr_ServiceNotRunning => ResolveError::Offline,
+        kDNSServiceErr_NoRouter => ResolveError::Offline,
+        _ => ResolveError::Unknown
+    }
+}
+
 #[async_trait]
 impl FoundService for BonjourFoundService {
     fn info(&self) -> &ServiceInfo { &self.info }
@@ -136,7 +146,7 @@ impl OwnedDnsService {
         if error == 0 {
             Ok(OwnedDnsService(internal_dns_ref))
         } else {
-            Err(ResolveError::Unknown)
+            Err(map_error(error))
         }
     }
     /// 
@@ -170,7 +180,7 @@ impl OwnedDnsService {
         if error == 0 {
             Ok(OwnedDnsService(internal_dns_ref))
         } else {
-            Err(ResolveError::Unknown)
+            Err(map_error(error))
         }
     }
 }
@@ -187,6 +197,7 @@ fn resolve_thread(
     // SAFETY: resolve_service lives until this thread exits; reader/writer are not closed
     #[cfg(not(windows))]
     if let Err(()) = unsafe { super::posix::wait_for_status(resolve_socket.get(), pipe.0) } {
+        // future was dropped; safely exit
         super::posix::close_signal_pipe(pipe.0, &pipe.1);
         return;
     }
