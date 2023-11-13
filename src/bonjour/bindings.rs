@@ -218,15 +218,19 @@ pub type dnssd_sock_t = std::ffi::c_int;
 extern "C" {
     // Not available with avahi-compat-libdns_sd
     #[cfg(any(target_vendor = "apple", windows))]
+    #[must_use]
     pub fn DNSServiceGetProperty(
         property: *const c_char,
         result: *mut c_void,
         size: *mut u32,
     ) -> DNSServiceErrorType;
 
+    #[must_use]
     pub fn DNSServiceProcessResult(service_ref: DNSServiceRef) -> DNSServiceErrorType;
     pub fn DNSServiceRefSockFD(service_ref: DNSServiceRef) -> dnssd_sock_t;
+    #[must_use]
     pub fn DNSServiceRefDeallocate(service_ref: DNSServiceRef) -> DNSServiceErrorType;
+    #[must_use]
     pub fn DNSServiceBrowse(
         service_ref: *mut DNSServiceRef,
         flags: DNSServiceFlags,
@@ -236,6 +240,7 @@ extern "C" {
         callback: DNSServiceBrowseReply,
         context: *mut c_void
     ) -> DNSServiceErrorType;
+    #[must_use]
     pub fn DNSServiceRegister(
         service_ref: *mut DNSServiceRef,
         flags: DNSServiceFlags,
@@ -250,6 +255,7 @@ extern "C" {
         callback: DNSServiceRegisterReply,
         context: *mut c_void
     ) -> DNSServiceErrorType;
+    #[must_use]
     pub fn DNSServiceResolve(
         service_ref: *mut DNSServiceRef,
         flags: DNSServiceFlags,
@@ -263,6 +269,7 @@ extern "C" {
     
     // Not available with avahi-compat-libdns_sd
     #[cfg(any(target_vendor = "apple", windows))]
+    #[must_use]
     pub fn DNSServiceGetAddrInfo(
         service_ref: *mut DNSServiceRef,
         flags: DNSServiceFlags,

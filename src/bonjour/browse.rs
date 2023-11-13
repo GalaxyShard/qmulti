@@ -14,6 +14,16 @@ pub(crate) struct BonjourBrowser {
 impl Browser for BonjourBrowser {
     
 }
+
+fn map_error(err: DNSServiceErrorType) -> BrowseError {
+    #[allow(non_upper_case_globals)] // bug: https://github.com/rust-lang/rust/issues/39371
+    match err {
+        kDNSServiceErr_ServiceNotRunning => BrowseError::Offline,
+        kDNSServiceErr_NoRouter => BrowseError::Offline,
+        _ => BrowseError::Unknown
+    }
+}
+
 pub(crate) fn browse_services(service_type: &str, protocol: Protocol, callback: BrowseCallback) -> Result<BonjourBrowser, BrowseError> {
     #[cfg(not(windows))]
     let (reader, writer) = super::posix::create_pipe();
@@ -83,23 +93,24 @@ impl OwnedDnsService {
         if error == 0 {
             Ok(OwnedDnsService(internal_dns_ref))
         } else {
-            Err(BrowseError::Unknown)
+            Err(map_error(error))
         }
     }
 }
 
 fn browse_thread(
     dns_service: Arc<Mutex<OwnedDnsService>>,
-    _context: Box<Mutex<BrowseCallback>>,
+    context: Box<Mutex<BrowseCallback>>,
     #[cfg(not(windows))]
     pipe: (i32, Arc<Mutex<i32>>),
 ) {
     loop {
         let socket = get_internal_socket(&dns_service);
-
+        
         // SAFETY: dns_service lives until this thread exits; reader/writer are not closed
         #[cfg(not(windows))]
         if let Err(()) = unsafe { super::posix::wait_for_status(socket.get(), pipe.0) } {
+            // future was dropped; safely exit
             super::posix::close_signal_pipe(pipe.0, &pipe.1);
             return;
         }
@@ -110,7 +121,9 @@ fn browse_thread(
 
         let error = block_until_handled(&dns_service);
         if error != 0 {
-            panic!("Unexpected error from DNSServiceProcessResult (code {})", error);
+            eprintln!("Unexpected error (block_until_handled): {}", error);
+            let mut callback = context.lock().unwrap();
+            callback(ServiceState::Error(map_error(error)));
         }
     }
 }
@@ -136,7 +149,7 @@ unsafe extern "C" fn browse_callback(
     let callback = unsafe { &*(context as *const Mutex<BrowseCallback>) };
     let mut callback = callback.lock().unwrap();
     if error != 0 {
-        eprintln!("Unexpected error: {error}");
+        eprintln!("Unexpected error: {}", error);
         callback(ServiceState::Error(BrowseError::Unknown));
         return;
     }

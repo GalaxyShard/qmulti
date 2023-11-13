@@ -23,6 +23,7 @@ struct BonjourLostService {
 struct OwnedDnsService(DNSServiceRef);
 unsafe impl Send for OwnedDnsService {}
 impl OwnedDnsService {
+    #[must_use]
     fn block_until_handled(&self) -> DNSServiceErrorType {
         assert!(self.is_valid());
         // SAFETY: Must be called with a valid DNSServiceRef; checked for in line above
@@ -55,6 +56,7 @@ fn get_internal_socket<'a>(dns_service: &'a Mutex<OwnedDnsService>) -> InternalS
     drop(guard);
     return InternalSocket { fd: socket, _lifetime: &() };
 }
+#[must_use]
 fn block_until_handled(dns_service: &Mutex<OwnedDnsService>) -> DNSServiceErrorType {
     let dns_service_guard = dns_service.lock().unwrap();
     let error = dns_service_guard.block_until_handled();
@@ -65,7 +67,7 @@ impl Drop for OwnedDnsService {
     fn drop(&mut self) {
         if self.is_valid() {
             // SAFETY: Must be called with a valid DNSServiceRef; checked for in line above 
-            unsafe { DNSServiceRefDeallocate(self.0) };
+            let _ = unsafe { DNSServiceRefDeallocate(self.0) };
         }
     }
 }
@@ -82,6 +84,7 @@ pub(super) mod posix {
     
         (pipes[0], pipes[1])
     }
+    #[must_use]
     pub(super) fn poll_indefinite(fds: &mut [libc::pollfd]) -> std::ffi::c_int {
         // -1 for indefinite timeout
         // SAFETY: fds.len() is always the correct length
