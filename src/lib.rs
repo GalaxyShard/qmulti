@@ -5,8 +5,12 @@ use async_trait::async_trait;
 
 pub use crate::util::Protocol;
 
+#[cfg(feature = "serde")]
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ServiceInfo {
     name: CString,
     domain: CString,
@@ -17,14 +21,16 @@ impl ServiceInfo {
     pub fn name(&self) -> &CStr { self.name.as_c_str() }
     pub fn domain(&self) -> &CStr { self.domain.as_c_str() }
 }
-pub trait Registration {
+pub trait Registration: Send {
     fn info(&self) -> &ServiceInfo;
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum RegisterError {
-    Offline, NotAvailable, InvalidName, Unknown, PortError(std::io::Error)
+    Offline, NotAvailable, InvalidName, Unknown, PortError
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum BrowseError {
     Offline, NotAvailable, InvalidName, Unknown,
 }
@@ -32,7 +38,8 @@ pub enum BrowseError {
 // pub enum BrowseReplyError {
 
 // }
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum ResolveError {
     Offline, Unknown,
 }
@@ -60,6 +67,7 @@ pub async fn publish_service(service_type: &str, protocol: Protocol, port: u16) 
     return compile_error!("TODO: implement windns");
 }
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ResolvedService {
     pub ip: IpAddr,
     pub port: u16,
@@ -79,7 +87,7 @@ pub enum ServiceState {
     Lost(Box<dyn LostService>),
     Error(BrowseError)
 }
-pub trait Browser {
+pub trait Browser: Send {
 
 }
 pub type BrowseCallback = Box<dyn FnMut(ServiceState) + Send + 'static>;

@@ -8,10 +8,15 @@ edition = "2021"
 [workspace]
 members = ["qmulti-test"]
 
+
 [dependencies]
 async-trait = "0.1.74"
+serde = { version = "1.0", features = ["derive"], optional = true }
 
-#[target.'cfg(any(zeroconf_impl = "bonjour", target_vendor = "apple", windows))'.dependencies]
+[features]
+serde = ["dep:serde"]
+
+[target.'cfg(any(zeroconf_impl = "bonjour", target_vendor = "apple", windows))'.dependencies]
 libc = "0.2"
 
 [build-dependencies]

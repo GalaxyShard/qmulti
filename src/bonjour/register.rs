@@ -113,7 +113,7 @@ impl OwnedDnsService {
         let mut internal_dns_ref: DNSServiceRef = null_mut();
 
         if port == 0 {
-            port = find_available_port(protocol).map_err(|e| RegisterError::PortError(e))?;
+            port = find_available_port(protocol).map_err(|_err| RegisterError::PortError)?;
         }
 
         // SAFETY:
