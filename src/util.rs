@@ -1,8 +1,10 @@
 use std::{fmt::Display, ffi::CString, net::{TcpListener, SocketAddr, UdpSocket}};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Protocol {
-    Tcp, Udp
+    Tcp=0, Udp=1
 }
 impl Display for Protocol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
