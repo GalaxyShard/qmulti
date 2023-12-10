@@ -97,8 +97,8 @@ checksum = "327762f6e5a765692301e5bb513e0d9fef63be86bbc14528052b1cd3e6f03e07"
 name = "browse-example"
 version = "0.1.0"
 dependencies = [
- "qmulti",
  "tokio",
+ "waver",
 ]
 
 [[package]]
@@ -357,16 +357,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "qmulti"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "bindgen",
- "libc",
- "serde",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -417,8 +407,8 @@ checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
 name = "register-example"
 version = "0.1.0"
 dependencies = [
- "qmulti",
  "tokio",
+ "waver",
 ]
 
 [[package]]
@@ -555,6 +545,16 @@ name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
+
+[[package]]
+name = "waver"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bindgen",
+ "libc",
+ "serde",
+]
 
 [[package]]
 name = "which"

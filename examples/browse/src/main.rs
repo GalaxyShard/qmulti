@@ -8,16 +8,16 @@ async fn main() {
     let mut accumulator = 1;
 
     let map_capture = map.clone();
-    let _browser = qmulti::browse_services("test-service", qmulti::Protocol::Tcp, move |state| {
+    let _browser = waver::browse_services("test-service", waver::Protocol::Tcp, move |state| {
         let map = map_capture.clone();
         match state {
-            qmulti::ServiceState::Found(service) => {
+            waver::ServiceState::Found(service) => {
                 println!("({}) Found {:?} ({:?})", accumulator, service.info().name(), service.info().domain());
                 map.lock().unwrap().insert(accumulator, service);
 
                 accumulator += 1;
             }
-            qmulti::ServiceState::Lost(service) => {
+            waver::ServiceState::Lost(service) => {
                 let mut map = map.lock().unwrap();
                 let index = *map.iter().find(|&(_, v)| v.info() == service.info()).unwrap().0;
 
@@ -25,7 +25,7 @@ async fn main() {
 
                 map.remove(&index);
             },
-            qmulti::ServiceState::Error(code) => {
+            waver::ServiceState::Error(code) => {
                 println!("An error occured while browsing: {:?}", code);
             }
         }

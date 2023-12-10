@@ -54,7 +54,7 @@ mod avahi;
 mod android_nsd;
 
 #[cfg(not(any(zeroconf_impl = "bonjour", zeroconf_impl = "avahi", zeroconf_impl = "android_nsd", zeroconf_impl = "windns")))]
-compile_error!("QMulti only supports Bonjour, Avahi, Android NSD, and windns (includes Linux, Android, iOS, MacOS, and Windows)");
+compile_error!("Waver only supports Bonjour, Avahi, Android NSD, and windns (includes Linux, Android, iOS, MacOS, and Windows)");
 
 pub async fn publish_service(service_type: &str, protocol: Protocol, port: u16) -> Result<impl Registration, RegisterError> {
     #[cfg(zeroconf_impl = "bonjour")]
