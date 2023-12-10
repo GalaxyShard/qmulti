@@ -110,7 +110,7 @@ fn browse_thread(
         // SAFETY: dns_service lives until this thread exits; reader/writer are not closed
         #[cfg(not(windows))]
         if let Err(()) = unsafe { super::posix::wait_for_status(socket.get(), pipe.0) } {
-            // future was dropped; safely exit
+            // browser was dropped; safely exit
             super::posix::close_signal_pipe(pipe.0, &pipe.1);
             return;
         }
