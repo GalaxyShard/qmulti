@@ -1,20 +1,14 @@
 use std::{future::Future, ptr::null_mut};
 
-use crate::{RegistrationInfo, Protocol, util::{registration_type, find_available_port}, RegisterError};
-use crate::bindings::*;
+use crate::{Registration, Protocol, util::{registration_type, find_available_port}, RegisterError, ServiceInfo};
+use super::bindings::*;
 
 
 pub(crate) struct AvahiRegistration {
-    name: String,
-    domain: String,
+    service_info: ServiceInfo,
 }
-impl RegistrationInfo for AvahiRegistration {
-    fn name(&self) -> &str {
-        &self.name
-    }
-    fn domain(&self) -> &str {
-        &self.domain
-    }
+impl Registration for AvahiRegistration {
+    fn info(&self) -> &ServiceInfo { &self.service_info }
 }
 pub(crate) struct RegisterFuture {
     
