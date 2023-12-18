@@ -5,5 +5,5 @@ zig = true
 [target.x86_64-unknown-linux-gnu]
 pre-build = [
     "apt-get update && apt-get upgrade",
-    "apt-get install libavahi-client-dev avahi-daemon -y"
+    "apt-get install libavahi-client-dev -y"
 ]
