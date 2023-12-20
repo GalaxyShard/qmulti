@@ -18,7 +18,7 @@ impl RegisterFuture {
         let reg_type = registration_type(service_type, protocol).map_err(|_| RegisterError::InvalidName)?;
 
         if port == 0 {
-            port = find_available_port(protocol).map_err(|e| RegisterError::PortError(e))?;
+            port = find_available_port(protocol).map_err(|e| RegisterError::PortError)?;
         }
 
         // SAFETY: function is safe; just needs FFI
