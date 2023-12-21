@@ -164,6 +164,12 @@ pub const kDNSServiceErr_DefunctConnection: c_int = -65569; // Connection to dae
 pub const kDNSServiceErr_PolicyDenied: c_int = -65570;
 pub const kDNSServiceErr_NotPermitted: c_int = -65571;
 
+pub const kDNSServiceInterfaceIndexAny: u32 = 0;
+pub const kDNSServiceInterfaceIndexLocalOnly: u32 = 0_u32.wrapping_sub(1);
+pub const kDNSServiceInterfaceIndexUnicast: u32 = 0_u32.wrapping_sub(2);
+pub const kDNSServiceInterfaceIndexP2P: u32 = 0_u32.wrapping_sub(3);
+pub const kDNSServiceInterfaceIndexBLE: u32 = 0_u32.wrapping_sub(4);
+
 pub type DNSServiceFlags = u32;
 pub type DNSServiceProtocol = u32;
 pub type DNSServiceErrorType = i32;

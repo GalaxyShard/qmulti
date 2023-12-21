@@ -84,7 +84,8 @@ impl OwnedDnsService {
         //     regtype must be a valid pointer to a c string in the format _[A-Za-z0-9\-]{1,15}._(tcp|udp); this is validated in new_service_type
         //     callback_ptr must be safe to call (precondition)
         let error = unsafe { DNSServiceBrowse(
-            &mut internal_dns_ref, 0, 0,
+            &mut internal_dns_ref,
+            0, kDNSServiceInterfaceIndexP2P,
             reg_type.as_ptr(),
             domain.map(|v| v.as_ptr()).unwrap_or(null()),
             callback_ptr,

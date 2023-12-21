@@ -134,7 +134,7 @@ impl OwnedDnsService {
         //     callback_ptr must be safe to call (precondition)
         let error = unsafe { DNSServiceResolve(
             &mut internal_dns_ref,
-            kDNSServiceFlagsForceMulticast,
+            kDNSServiceFlagsForceMulticast | kDNSServiceFlagsIncludeP2P,
             interface_index,
             name.as_ptr(),
             reg_type.as_ptr(),
