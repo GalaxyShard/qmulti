@@ -256,18 +256,18 @@ fn resolve_thread(
         if error != 0 {
             panic!("Unexpected error from DNSServiceProcessResult (code {})", error);
         }
+    }
+    
+    let mut future_state_guard = future_state.lock().unwrap();
+    future_state_guard.completed = true;
+    future_state_guard.port = port;
+    #[cfg(target_vendor = "apple")] {
         let mut callback_state_guard = callback_state.lock().unwrap();
         assert!(callback_state_guard.completed);
     
         if callback_state_guard.error != 0 {
             panic!("Unexpected error from callback (code {})", callback_state_guard.error);
         }
-    }
-
-    let mut future_state_guard = future_state.lock().unwrap();
-    future_state_guard.completed = true;
-    future_state_guard.port = port;
-    #[cfg(target_vendor = "apple")] {
         future_state_guard.ip = callback_state_guard.ip.take().unwrap();
     }
     #[cfg(target_os = "linux")] { // DNSServiceGetAddrInfo not available in avahi-compat-libdns_sd
