@@ -156,6 +156,7 @@ impl OwnedDnsService {
     /// 
     /// If there are no errors returned in the callback (errorCode == 0), `hostname` and `address` are valid values
     /// 
+    #[cfg(target_vendor = "apple")]
     unsafe fn get_addr_info(
         interface_index: u32,
         host_name: &CStr,
@@ -217,54 +218,105 @@ fn resolve_thread(
     if callback_state_guard.error != 0 {
         panic!("Unexpected error from callback (code {})", callback_state_guard.error);
     }
+    #[allow(unused_variables)]
     let host_name = callback_state_guard.host_target.take().unwrap();
+    let port = callback_state_guard.port;
     callback_state_guard.completed = false; // reset for get_addr_info
     drop(callback_state_guard);
 
-
-
-    let context = &*callback_state as *const Mutex<CallbackState> as *mut std::ffi::c_void;
-
-    // SAFETY:
-    //     `context` lives until after this thread exits, which is after get_addr_info returns
-    //     get_addr_info_callback is sound under the guarentees provided by OwnedDnsService::get_addr_info
-    let addr_service = unsafe { OwnedDnsService::get_addr_info(
-        interface_index,
-        &host_name,
-        Some(get_addr_info_callback),
-        context
-    ) }.unwrap(); /* TODO: proper error handling */
-
-    let addr_socket = addr_service.internal_socket();
-
-    // SAFETY: addr_service lives until this thread exits; reader/writer are not closed
-    #[cfg(not(windows))]
-    if let Err(()) = unsafe { super::posix::wait_for_status(addr_socket, pipe.0) } {
-        super::posix::close_signal_pipe(pipe.0, &pipe.1);
-        return;
-    } else {
-        super::posix::close_signal_pipe(pipe.0, &pipe.1);
-    }
-    #[cfg(windows)]
+    #[cfg(target_vendor = "apple")]
     {
-        todo!("implement select for windows")
-    }
+        let context = &*callback_state as *const Mutex<CallbackState> as *mut std::ffi::c_void;
+        
+        // SAFETY:
+        //     `context` lives until after this thread exits, which is after get_addr_info returns
+        //     get_addr_info_callback is sound under the guarentees provided by OwnedDnsService::get_addr_info
+        let addr_service = unsafe { OwnedDnsService::get_addr_info(
+            interface_index,
+            &host_name,
+            Some(get_addr_info_callback),
+            context
+        ) }.unwrap(); /* TODO: proper error handling */
     
-    let error = addr_service.block_until_handled();
-    if error != 0 {
-        panic!("Unexpected error from DNSServiceProcessResult (code {})", error);
-    }
-    let mut callback_state_guard = callback_state.lock().unwrap();
-    assert!(callback_state_guard.completed);
+        let addr_socket = addr_service.internal_socket();
 
-    if callback_state_guard.error != 0 {
-        panic!("Unexpected error from callback (code {})", callback_state_guard.error);
+        // SAFETY: addr_service lives until this thread exits; reader/writer are not closed
+        #[cfg(not(windows))]
+        if let Err(()) = unsafe { super::posix::wait_for_status(addr_socket, pipe.0) } {
+            super::posix::close_signal_pipe(pipe.0, &pipe.1);
+            return;
+        } else {
+            super::posix::close_signal_pipe(pipe.0, &pipe.1);
+        }
+        #[cfg(windows)]
+        {
+            todo!("implement select for windows")
+        }
+        let error = addr_service.block_until_handled();
+        if error != 0 {
+            panic!("Unexpected error from DNSServiceProcessResult (code {})", error);
+        }
+        let mut callback_state_guard = callback_state.lock().unwrap();
+        assert!(callback_state_guard.completed);
+    
+        if callback_state_guard.error != 0 {
+            panic!("Unexpected error from callback (code {})", callback_state_guard.error);
+        }
     }
 
     let mut future_state_guard = future_state.lock().unwrap();
     future_state_guard.completed = true;
-    future_state_guard.port = callback_state_guard.port;
-    future_state_guard.ip = callback_state_guard.ip.take().unwrap();
+    future_state_guard.port = port;
+    #[cfg(target_vendor = "apple")] {
+        future_state_guard.ip = callback_state_guard.ip.take().unwrap();
+    }
+    #[cfg(target_os = "linux")] { // DNSServiceGetAddrInfo not available in avahi-compat-libdns_sd
+        let port_str = CString::new(port.to_string()).unwrap();
+        let mut results = std::ptr::null_mut();
+
+        // SAFETY: needed for FFI, as per Rust & libc documentation
+        let mut hints: libc::addrinfo = unsafe { std::mem::zeroed() };
+        hints.ai_family = libc::AF_UNSPEC;
+        
+        // SAFETY: FFI, function is safe
+        let error = unsafe { libc::getaddrinfo(host_name.as_ptr(), port_str.as_ptr(), &hints, &mut results) };
+        if error != 0 {
+            panic!("getaddrinfo error (code {})", error);
+        }
+        assert!(!results.is_null());
+
+        let mut iter = unsafe { results.as_ref() };
+        let mut ip: Option<IpAddr> = None;
+        while let Some(addrinfo) = iter {
+            // println!("addrinfo found: {}", addrinfo.ai_addr);
+            let sockaddr = unsafe { addrinfo.ai_addr.as_ref().unwrap() };
+
+            if sockaddr.sa_family == (libc::AF_INET as u8).into() {
+                // SAFETY: sockaddr is sockaddr_in if sa_family == AF_INET
+                let octets = unsafe { &*(sockaddr as *const _ as *const libc::sockaddr_in) }.sin_addr.s_addr;
+    
+                ip = Some(Ipv4Addr::from(octets.to_ne_bytes()).into());
+                
+            } else if sockaddr.sa_family == (libc::AF_INET6 as u8).into() {
+                // SAFETY: sockaddr is sockaddr_in6 if sa_family == AF_INET6
+                let octets = unsafe { &*(sockaddr as *const _ as *const libc::sockaddr_in6) }.sin6_addr.s6_addr;
+    
+                ip = Some(Ipv6Addr::from(octets).into());
+            } else {
+                unreachable!();
+            }
+
+            iter = unsafe { addrinfo.ai_next.as_ref() };
+        }
+
+        // SAFETY: `results` is the output of libc::getaddrinfo
+        unsafe { libc::freeaddrinfo(results) };
+
+        
+        future_state_guard.ip = ip.unwrap();
+    }
+
+    
 
     if let Some(waker) = future_state_guard.waker.take() {
         drop(future_state_guard);
@@ -333,6 +385,7 @@ unsafe extern "C" fn resolve_callback(
 /// 
 /// `context` must point to a valid Mutex<CallbackState>
 /// 
+#[cfg(target_vendor = "apple")]
 unsafe extern "C" fn get_addr_info_callback(
     _sd_ref: DNSServiceRef,
     _flags: DNSServiceFlags,
