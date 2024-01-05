@@ -1,6 +1,12 @@
 # Waver
 
-An Open Source ad-hoc (aka zero-configuration) networking library for communication between nearby devices without an Internet or existing Wi-Fi connection
+An Open Source networking library for communication between nearby devices without an Internet or existing Wi-Fi connection
+
+## TODO
+
+- Wi-Fi P2P (aka Wi-Fi Direct) API
+- Neighbor Awareness Networking (aka Wi-Fi Aware) API
+- Consider: Open Wireless Link API
 
 ## License
 
