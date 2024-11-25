@@ -1,5 +1,9 @@
 # Waver
 
+This library is in the process of being rewritten to support more stable and cross-platform APIs
+
+---
+
 An Open Source networking library for communication between nearby devices without an Internet or existing Wi-Fi connection
 
 ## TODO
